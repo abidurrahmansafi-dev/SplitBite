@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Andewali V9 FINAL ANDROID</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:system-ui, -apple-system, Arial, sans-serif;background:#eef1f5;margin:0;padding:12px; overflow-x:hidden}
+h1{background:#1a237e;color:#fff;padding:14px;border-radius:12px;text-align:center;font-size:18px;margin:0 0 12px 0;box-shadow:0 3px 8px rgba(26,35,126,0.25)}
+.card{background:#fff;padding:14px;border-radius:14px;margin:0 0 12px 0;box-shadow:0 2px 8px rgba(0,0,0,.06); width:100%; overflow:hidden}
+input{padding:11px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:15px;font-weight:600; width:100%; min-width:0; background:#f8fafc}
+input:focus{outline:none;border-color:#1a237e;background:#fff}
+.row2{display:flex;gap:8px;margin:8px 0; flex-wrap:wrap}
+.row2 input,.row2 button{flex:1; min-width:0}
+button{padding:12px;background:#1a237e;color:#fff;border:none;border-radius:10px;font-weight:bold;font-size:14px;cursor:pointer;transition:transform 0.1s, opacity 0.15s}
+button:active{transform:scale(0.98);opacity:0.9}
+.btn-small{padding:6px 10px;font-size:12px;border-radius:6px}
+.btn-del{background:#d32f2f} .btn-green{background:#2e7d32} .btn-blue{background:#1a237e} .btn-orange{background:#ef6c00}
+.person{background:#f8fafc;border:1.5px solid #e2e8f0;padding:10px;border-radius:10px;margin:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden; display:block; overflow-x:auto; white-space:nowrap}
+th{background:#1a237e;color:#fff;padding:12px 8px;font-size:13px;font-weight:800}
+td{padding:10px 8px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:14px;font-weight:600}
+.total-cell{background:#e3f2fd;font-weight:bold}
+.balance-pay{color:#2e7d32} .balance-get{color:#c62828}
+.top-inputs{display:grid;grid-template-columns:1fr;gap:8px}
+.hist{background:#fff8e1;border:1px solid #ffe082;padding:10px;border-radius:10px;margin:6px 0;display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<h1>Andewali V9 ULTIMATE - Monthly Records</h1>
+
+<div class="card">
+<b>Month & Date:</b>
+<div class="row2">
+<input id="monthName" type="text" placeholder="Month e.g. October 2026">
+<input id="dateNow" type="date">
+</div>
+<div class="row2">
+<button class="btn-blue" onclick="saveCurrentMonth()">SAVE THIS MONTH</button>
+<button class="btn-orange" onclick="newMonth()">NEW MONTH</button>
+</div>
+</div>
+
+<div class="card">
+<b>Totals (Editable Anytime):</b>
+<div class="top-inputs">
+<input id="rote" type="number" placeholder="Rote Total" oninput="autoCalc()">
+<input id="internet" type="number" placeholder="Internet Total" oninput="autoCalc()">
+<input id="room" type="number" placeholder="Room Rent Total" oninput="autoCalc()">
+</div>
+<div id="handiShow" style="background:#c8e6c9;padding:10px;border-radius:8px;font-weight:bold;font-size:16px;margin-top:8px">Handi Total Auto = 0</div>
+</div>
+
+<div class="card">
+<b>Add Person:</b>
+<div class="row2">
+<input id="pname" placeholder="Name">
+<input id="pdays" type="number" placeholder="Days">
+</div>
+<div class="row2">
+<input id="pexp" type="number" placeholder="Exp">
+<button onclick="addPerson()">+ ADD</button>
+</div>
+<div id="list"></div>
+</div>
+
+<div class="card">
+<button onclick="calculate()" style="background:#1a237e;width:100%">CALCULATE FINAL</button>
+<div id="result" style="overflow-x:auto;margin-top:12px"></div>
+<div class="row2" style="margin-top:12px">
+<button class="btn-green" onclick="saveAsPDF()" style="width:100%">SAVE AS PDF</button>
+</div>
+</div>
+
+<div class="card">
+<b>Saved Months Records (Stay until you delete):</b>
+<div id="history"></div>
+<button class="btn-del" style="margin-top:10px;width:100%" onclick="clearAllHistory()">DELETE ALL HISTORY</button>
+</div>
+
+<script>
+let persons=[];
+document.getElementById('dateNow').valueAsDate = new Date();
+let monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+document.getElementById('monthName').value = monthNames[new Date().getMonth()]+" "+new Date().getFullYear();
+
+// Android Native Toast helper
+function showToast(msg) {
+  if (window.Android && window.Android.showToast) {
+    window.Android.showToast(msg);
+  } else {
+    alert(msg);
+  }
+}
+
+function addPerson(){
+ let n=document.getElementById('pname').value.trim();
+ let d=parseFloat(document.getElementById('pdays').value)||0;
+ let e=parseFloat(document.getElementById('pexp').value)||0;
+ if(!n||!d){showToast('Name + Days needed');return}
+ persons.push({name:n.toUpperCase(),days:d,exp:e,rote:true,handi:true,internet:true,room:true});
+ document.getElementById('pname').value='';document.getElementById('pdays').value='';document.getElementById('pexp').value='';
+ render(); saveDraft(); autoCalc();
+ if (window.Android && window.Android.vibrate) { window.Android.vibrate(50); }
+}
+function render(){
+ let handiSum=persons.reduce((s,p)=>s+p.exp,0);
+ document.getElementById('handiShow').innerText='Handi Total Auto = '+handiSum;
+ let h='';
+ persons.forEach((p,i)=>{
+  h+=`<div class="person">
+  <input type="text" value="${p.name}" onchange="persons[${i}].name=this.value.toUpperCase();saveDraft();autoCalc()" style="width:85px">
+  D:<input type="number" value="${p.days}" onchange="persons[${i}].days=parseFloat(this.value)||0;saveDraft();autoCalc()" style="width:60px">
+  E:<input type="number" value="${p.exp}" onchange="persons[${i}].exp=parseFloat(this.value)||0;render();saveDraft();autoCalc()" style="width:70px">
+  <label style="font-size:12px"><input type="checkbox" ${p.rote?'checked':''} onchange="persons[${i}].rote=this.checked;saveDraft();autoCalc()">Rote</label>
+  <label style="font-size:12px"><input type="checkbox" ${p.handi?'checked':''} onchange="persons[${i}].handi=this.checked;saveDraft();autoCalc()">Handi</label>
+  <label style="font-size:12px"><input type="checkbox" ${p.internet?'checked':''} onchange="persons[${i}].internet=this.checked;saveDraft();autoCalc()">Net</label>
+  <label style="font-size:12px"><input type="checkbox" ${p.room?'checked':''} onchange="persons[${i}].room=this.checked;saveDraft();autoCalc()">Room</label>
+  <button class="btn-small btn-del" onclick="removePerson(${i})">X</button>
+  </div>`;
+ });
+ document.getElementById('list').innerHTML=h;
+}
+function removePerson(i){ persons.splice(i,1);render();saveDraft();autoCalc(); }
+function autoCalc(){ if(persons.length>0){calculate();} }
+function calculate(){
+ let rt=parseFloat(document.getElementById('rote').value)||0;
+ let nt=parseFloat(document.getElementById('internet').value)||0;
+ let rm=parseFloat(document.getElementById('room').value)||0;
+ let totalHandi=persons.reduce((s,p)=>s+p.exp,0);
+ let sDR=persons.filter(p=>p.rote).reduce((s,p)=>s+p.days,0)||1;
+ let sDH=persons.filter(p=>p.handi).reduce((s,p)=>s+p.days,0)||1;
+ let cN=persons.filter(p=>p.internet).length||1;
+ let cR=persons.filter(p=>p.room).length||1;
+ let pDR=rt/sDR; let pDH=totalHandi/sDH; let pN=nt/cN; let pR=rm/cR;
+ let month=document.getElementById('monthName').value;
+ let date=document.getElementById('dateNow').value;
+ let html=`<div id="pdfArea"><div style="font-weight:bold;font-size:16px;margin-bottom:8px;text-align:center">Andewali Hisaab - ${month} (${date})</div><table><tr><th>Name</th><th>Days</th><th>Handi</th><th>Rote</th><th>Net</th><th>Room</th><th>Total</th><th>Exp</th><th>Balance</th></tr>`;
+ persons.forEach(p=>{
+  let h=p.handi?pDH*p.days:0; let r=p.rote?pDR*p.days:0; let n=p.internet?pN:0; let ro=p.room?pR:0;
+  let tot=h+r+n+ro; let bal=tot-p.exp;
+  html+=`<tr><td><b>${p.name}</b></td><td>${p.days}</td><td>${Math.round(h)}</td><td>${Math.round(r)}</td><td>${Math.round(n)}</td><td>${Math.round(ro)}</td><td class="total-cell"><b>${Math.round(tot)}</b></td><td>${p.exp}</td><td class="${bal>=0?'balance-pay':'balance-get'}"><b>${bal>=0?Math.round(bal):'-'+Math.round(Math.abs(bal))}</b><br><span style="font-size:10px">${bal>=0?'Pay':'Get'}</span></td></tr>`;
+ });
+ html+=`</table></div>`;
+ document.getElementById('result').innerHTML=html;
+ saveDraft();
+}
+async function saveAsPDF(){
+ if(!document.getElementById('result').innerHTML||persons.length==0){showToast('Calculate first');return}
+ const { jsPDF } = window.jspdf;
+ let pdfArea=document.getElementById('pdfArea');
+ let canvas=await html2canvas(pdfArea,{scale:2,backgroundColor:'#ffffff'});
+ let imgData=canvas.toDataURL('image/png');
+ let pdf=new jsPDF('l','mm','a4');
+ let pdfWidth=pdf.internal.pageSize.getWidth();
+ let pdfHeight=(canvas.height*pdfWidth)/canvas.width;
+ pdf.addImage(imgData,'PNG',0,5,pdfWidth,pdfHeight);
+ let filename = `Andewali-${document.getElementById('monthName').value.replace(/ /g,'_')}.pdf`;
+ pdf.save(filename);
+ showToast('PDF Saved: ' + filename);
+}
+function saveDraft(){ try{ localStorage.setItem('andewali_draft', JSON.stringify({ persons, rote:document.getElementById('rote').value, internet:document.getElementById('internet').value, room:document.getElementById('room').value, month:document.getElementById('monthName').value, date:document.getElementById('dateNow').value })); }catch(e){} }
+function loadDraft(){ try{ let d=localStorage.getItem('andewali_draft'); if(d){ let o=JSON.parse(d); persons=o.persons||[]; document.getElementById('rote').value=o.rote||''; document.getElementById('internet').value=o.internet||''; document.getElementById('room').value=o.room||''; if(o.month) document.getElementById('monthName').value=o.month; if(o.date) document.getElementById('dateNow').value=o.date; render(); if(persons.length) calculate(); } }catch(e){} }
+function saveCurrentMonth(){ if(persons.length==0){showToast('Add persons first');return} calculate(); let hist=JSON.parse(localStorage.getItem('andewali_history')||'[]'); let record={ id:Date.now(), month:document.getElementById('monthName').value, date:document.getElementById('dateNow').value, data:JSON.stringify(document.getElementById('result').innerHTML), persons:JSON.parse(JSON.stringify(persons)), rote:document.getElementById('rote').value, internet:document.getElementById('internet').value, room:document.getElementById('room').value }; hist.unshift(record); localStorage.setItem('andewali_history', JSON.stringify(hist)); renderHistory(); showToast('Saved record for ' + record.month); }
+function renderHistory(){ let hist=JSON.parse(localStorage.getItem('andewali_history')||'[]'); let h=''; if(hist.length==0){h='<small style="color:#64748b">No saved records yet.</small>';} hist.forEach(r=>{ h+=`<div class="hist"><div><b>${r.month}</b><br><small>${r.date} - ${r.persons.length} persons</small></div><div><button class="btn-small btn-blue" onclick="loadHistory(${r.id})">LOAD</button> <button class="btn-small btn-del" onclick="deleteHistory(${r.id})">DEL</button></div></div>`; }); document.getElementById('history').innerHTML=h; }
+function loadHistory(id){ let hist=JSON.parse(localStorage.getItem('andewali_history')||'[]'); let rec=hist.find(r=>r.id==id); if(!rec)return; persons=rec.persons; document.getElementById('rote').value=rec.rote; document.getElementById('internet').value=rec.internet; document.getElementById('room').value=rec.room; document.getElementById('monthName').value=rec.month; document.getElementById('dateNow').value=rec.date; render(); document.getElementById('result').innerHTML=JSON.parse(rec.data); saveDraft(); showToast('Loaded ' + rec.month); }
+function deleteHistory(id){ let hist=JSON.parse(localStorage.getItem('andewali_history')||'[]'); hist=hist.filter(r=>r.id!=id); localStorage.setItem('andewali_history', JSON.stringify(hist)); renderHistory(); showToast('Record deleted'); }
+function clearAllHistory(){ if(confirm('DELETE ALL SAVED RECORDS?')){ localStorage.removeItem('andewali_history'); renderHistory(); showToast('All history cleared'); } }
+function newMonth(){ if(persons.length>0&&!confirm('Start new month? All current inputs will be reset.'))return; persons=[]; document.getElementById('rote').value=''; document.getElementById('internet').value=''; document.getElementById('room').value=''; document.getElementById('result').innerHTML=''; render(); saveDraft(); showToast('New month sheet created'); }
+loadDraft(); renderHistory();
+</script>
+</body>
+</html>
